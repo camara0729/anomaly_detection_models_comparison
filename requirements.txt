@@ -1,0 +1,27 @@
+# Core numerical / ML stack
+numpy
+pandas
+scipy
+scikit-learn
+
+# Deep learning
+torch
+torch-geometric
+
+# Data access
+h5py
+
+# Visualization
+matplotlib
+seaborn
+networkx
+
+# Notebook/runtime helpers
+ipython
+
+# Optional model mixin used by src/models/wae_gan.py
+huggingface-hub
+
+# Notes:
+# - google.colab imports in notebooks are optional and were intentionally excluded.
+# - torch-geometric must be installed with a build compatible with the installed torch/CUDA version.

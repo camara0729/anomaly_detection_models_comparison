@@ -367,3 +367,47 @@ def build_knn_graph(features: np.ndarray, k: int = 8) -> List[Data]:
         graphs.append(data)
 
     return graphs
+
+
+def to_sequence_last(windows: np.ndarray) -> np.ndarray:
+    """Convert windows from (N, C, W) to (N, W, C) for sequence models.
+
+    The Transformer/GAT pipeline stores windows as channels-first arrays.  The
+    WAE-GAN variants imported from ``models-WAE-GAN`` operate on time-major
+    sequences, where each time-step carries ``C`` sensor features.
+    """
+    if windows.ndim != 3:
+        raise ValueError(f"Expected windows with shape (N, C, W), got {windows.shape}")
+    return np.transpose(windows, (0, 2, 1)).astype(np.float32)
+
+
+def make_waegan_anomaly_splits(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    normal_label: int = 0,
+) -> Dict[str, np.ndarray]:
+    """Prepare anomaly-detection splits for the WAE-GAN notebooks.
+
+    Training and validation use only windows from the normal class.  Test keeps
+    all classes and returns binary labels where ``0=normal`` and ``1=anomaly``.
+    All returned arrays are in sequence-last format ``(N, W, C)``.
+    """
+    X_train_seq = to_sequence_last(X_train)
+    X_val_seq = to_sequence_last(X_val)
+    X_test_seq = to_sequence_last(X_test)
+
+    train_mask = np.asarray(y_train) == normal_label
+    val_mask = np.asarray(y_val) == normal_label
+    test_binary = (np.asarray(y_test) != normal_label).astype(np.int64)
+
+    return {
+        "X_train_normal": X_train_seq[train_mask],
+        "X_val_normal": X_val_seq[val_mask],
+        "X_test": X_test_seq,
+        "y_test_binary": test_binary,
+        "y_test_multiclass": np.asarray(y_test, dtype=np.int64),
+    }

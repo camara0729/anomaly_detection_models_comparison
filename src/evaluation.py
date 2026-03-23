@@ -36,6 +36,8 @@ import pandas as pd
 import torch
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
+    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -166,6 +168,55 @@ def compute_metrics(
         result[f"precision_c{c}"] = float(prec_per[c])
         result[f"recall_c{c}"] = float(rec_per[c])
         result[f"f1_c{c}"] = float(f1_per[c])
+
+    return result
+
+
+def compute_anomaly_metrics(
+    y_true: np.ndarray,
+    scores: np.ndarray,
+    threshold: Optional[float] = None,
+) -> Dict[str, float]:
+    """Compute anomaly-detection metrics from continuous scores.
+
+    Parameters
+    ----------
+    y_true : np.ndarray shape (n,)
+        Binary labels where ``0=normal`` and ``1=anomaly``.
+    scores : np.ndarray shape (n,)
+        Continuous anomaly scores. Higher means more anomalous.
+    threshold : float or None
+        If provided, compute thresholded classification metrics in addition to
+        ROC-AUC and Average Precision.
+    """
+    y_true = np.asarray(y_true, dtype=np.int64)
+    scores = np.asarray(scores, dtype=float)
+    if y_true.shape[0] != scores.shape[0]:
+        raise ValueError(
+            f"y_true and scores must have the same length, got {len(y_true)} and {len(scores)}"
+        )
+
+    result: Dict[str, float] = {
+        "auc_roc": float(roc_auc_score(y_true, scores)),
+        "average_precision": float(average_precision_score(y_true, scores)),
+    }
+
+    if threshold is not None:
+        y_pred = (scores >= threshold).astype(np.int64)
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+        result.update(
+            {
+                "threshold": float(threshold),
+                "accuracy": float(accuracy_score(y_true, y_pred)),
+                "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+                "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+                "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+                "tn": float(tn),
+                "fp": float(fp),
+                "fn": float(fn),
+                "tp": float(tp),
+            }
+        )
 
     return result
 
