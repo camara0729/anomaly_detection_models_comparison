@@ -167,6 +167,8 @@ class LSTMDiscriminator_TCN(nn.Module):
         *,
         n_layers: int,
         disc_hidden: int,
+        output_dim: int = 1,
+        apply_sigmoid: bool = True,
     ) -> None:
         super().__init__()
         self.lstm = nn.LSTM(
@@ -176,11 +178,13 @@ class LSTMDiscriminator_TCN(nn.Module):
             batch_first=True,
             num_layers=n_layers,
         )
-        self.output_layer = nn.Linear(disc_hidden, 1)
+        self.output_layer = nn.Linear(disc_hidden, output_dim)
+        self.apply_sigmoid = apply_sigmoid
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _, (hidden, _) = self.lstm(x)
-        return torch.sigmoid(self.output_layer(hidden[-1]))
+        logits = self.output_layer(hidden[-1])
+        return torch.sigmoid(logits) if self.apply_sigmoid else logits
 
 
 __all__ = ["Decoder_TCN", "Encoder_TCN", "LSTMDiscriminator_TCN", "TemporalBlock"]
